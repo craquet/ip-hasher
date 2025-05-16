@@ -57,17 +57,12 @@ func pollFile(logFile, outFile string, interval time.Duration) {
 
 		// Attempt to read new lines
 		reader := bufio.NewScanner(file)
-		lines := 0
 		for reader.Scan() {
 			line := reader.Text()
 			if len(line) < 2 {
 				continue
 			}
 			out.WriteString(processLogLine(line) + "\n")
-			lines++
-		}
-		if lines > 0 {
-			fmt.Printf("Wrote %d lines to output file\n", lines)
 		}
 
 		if reader.Err() != nil {
