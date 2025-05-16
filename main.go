@@ -47,7 +47,7 @@ func processLogFile() {
 	// Create a scanner to read the file line by line
 	scanner := bufio.NewScanner(file)
 
-	fmt.Println("IP Addresses found in the log:")
+	fmt.Println("Hashing IP-Addresses in log file")
 	for scanner.Scan() {
 		line := scanner.Text()
 		hashedLine := ipRegex.ReplaceAllStringFunc(line, func(s string) string {
@@ -59,12 +59,11 @@ func processLogFile() {
 			return fmt.Sprintf("%x", hash)
 		})
 
-		wrote, err := fileHashed.WriteString(hashedLine + "\n")
+		_, err := fileHashed.WriteString(hashedLine + "\n")
 		if err != nil {
 			fmt.Printf("Error adding line to file: %v\n", err)
 			return
 		}
-		fmt.Printf("Wrote %d bytes to file\n", wrote)
 	}
 
 	// Check for scanner errors
