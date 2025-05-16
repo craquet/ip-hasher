@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"fmt"
-	"github.com/fsnotify/fsnotify"
 	"os"
 	"regexp"
 	"time"
@@ -28,99 +27,72 @@ func processLogLine(line string) string {
 	return hashedLine
 }
 
-func tailLogFile(logFile string, outFile string) {
-	fmt.Println("Opening log file:", logFile)
+func pollFile(logFile, outFile string, interval time.Duration) {
+	fmt.Println("Opening log file...")
 
-	// Open the log file
 	file, err := os.Open(logFile)
 	if err != nil {
-		panic(err)
+		fmt.Println("Failed to open log file:", err)
+		return
 	}
 	defer file.Close()
 
-	// Open the log file
-	out, err := os.OpenFile(outFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	out, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		panic(err)
+		fmt.Println("Failed to open output file:", err)
+		return
 	}
 	defer out.Close()
 
-	// Seek to the end of the file to start tailing
-	_, seekErr := file.Seek(0, 2)
-	if seekErr != nil {
-		return
-	}
+	// Start at the end of the file
+	offset, _ := file.Seek(0, 2)
 
-	// Initialize a file watcher
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		panic(err)
-	}
-	defer watcher.Close()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
-	// Start watching the directory instead of the file to catch rotations
-	err = watcher.Add(".")
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println("Polling log file for changes...")
 
-	fmt.Println("Tailing log file...")
-
-	// Watch for file changes
 	for {
-		select {
-		case event := <-watcher.Events:
-			if event.Name == logFile {
-				if event.Op.Has(fsnotify.Write) {
-					// Read new lines
-					reader := bufio.NewScanner(file)
-					readLines := 0
-					for reader.Scan() {
-						line := reader.Text()
+		<-ticker.C
 
-						// Skip lines that are too short, these will usually be empty lines with just \n
-						if len(line) < 2 {
-							continue
-						}
-
-						processedLine := processLogLine(line)
-						_, err = out.WriteString(processedLine + "\n")
-						if err != nil {
-							fmt.Println("Could not write line to output:", err)
-						}
-						readLines++
-					}
-					fmt.Println("Read", readLines, "lines from log file")
-				}
-				if event.Op.Has(fsnotify.Remove) || event.Op.Has(fsnotify.Rename) {
-					fmt.Println("Log file rotated, waiting to reopen...")
-
-					_ = file.Close()
-					_ = watcher.Close()
-					_ = out.Close()
-
-					err = os.Remove(outFile)
-					if err != nil {
-						fmt.Println("Could not remove output file:", err)
-					}
-
-					// Wait for the file to be recreated
-					for {
-						time.Sleep(1 * time.Second)
-						if _, err := os.Stat(logFile); err == nil {
-							return
-						}
-					}
-				}
+		// Attempt to read new lines
+		reader := bufio.NewScanner(file)
+		lines := 0
+		for reader.Scan() {
+			line := reader.Text()
+			if len(line) < 2 {
+				continue
 			}
-		case err := <-watcher.Errors:
-			fmt.Println("File system watch error:", err)
+			out.WriteString(processLogLine(line) + "\n")
+			lines++
+		}
+		if lines > 0 {
+			fmt.Printf("Wrote %d lines to output file\n", lines)
+		}
+
+		if reader.Err() != nil {
+			fmt.Println("Error reading log file:", err)
+			return
+		}
+
+		// In case of log rotation, check if the file size has decreased
+		newOffset, _ := file.Seek(0, 2)
+		if newOffset < offset {
+			fmt.Println("Log file rotated or truncated, reopening...")
+			err := os.Truncate(outFile, 0)
+			if err != nil {
+				fmt.Println("Failed to truncate output file:", err)
+			}
+
+			return
+		} else {
+			offset = newOffset
 		}
 	}
 }
 
 func main() {
 	for {
-		tailLogFile("access.log", "access_hashed.log")
+		pollFile("access.log", "access_hashed.log", time.Second)
 	}
 }
