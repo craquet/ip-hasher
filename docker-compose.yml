@@ -1,0 +1,6 @@
+services:
+  ip-hasher:
+    build: .
+    volumes:
+      - ./access.log:/app/access.log:ro
+      - ./access_hashed.log:/app/access_hashed.log
