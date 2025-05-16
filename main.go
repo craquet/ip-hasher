@@ -71,7 +71,7 @@ func tailLogFile(logFile string, outFile string) {
 		select {
 		case event := <-watcher.Events:
 			if event.Name == logFile {
-				if event.Op&fsnotify.Write == fsnotify.Write {
+				if event.Op.Has(fsnotify.Write) {
 					// Read new lines
 					reader := bufio.NewScanner(file)
 					readLines := 0
