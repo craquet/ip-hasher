@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 )
 
-func main() {
+func processLogFile() {
 	// Define the log file path
 	logFile := "access.log"
 	hashedLogFile := "access_hashed.log"
@@ -19,14 +20,24 @@ func main() {
 		fmt.Printf("Error opening file: %v\n", err)
 		return
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}(file)
 
 	fileHashed, errHashed := os.Create(hashedLogFile)
 	if errHashed != nil {
 		fmt.Printf("Error opening file: %v\n", err)
 		return
 	}
-	defer fileHashed.Close()
+	defer func(fileHashed *os.File) {
+		err := fileHashed.Close()
+		if err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}(fileHashed)
 
 	// Regular expression to match IPv4 addresses
 	ipRegex := regexp.MustCompile(`\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b`)
@@ -59,5 +70,15 @@ func main() {
 	// Check for scanner errors
 	if err := scanner.Err(); err != nil {
 		fmt.Printf("Error reading file: %v\n", err)
+	}
+}
+
+func main() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		processLogFile()
+		<-ticker.C
 	}
 }
