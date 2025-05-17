@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"syscall"
 	"time"
 )
 
@@ -36,6 +37,8 @@ func pollFile(logFile, outFile string, interval time.Duration) {
 		return
 	}
 	defer file.Close()
+	stat, err := file.Stat()
+	fd := stat.Sys().(*syscall.Stat_t).Ino
 
 	out, err := os.OpenFile(outFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -55,14 +58,29 @@ func pollFile(logFile, outFile string, interval time.Duration) {
 	for {
 		<-ticker.C
 
-		// Attempt to read new lines
+		newStat, err := os.Stat(logFile)
+		if err != nil {
+			fmt.Println("Failed to stat log file:", err)
+			return
+		}
+		newFd := newStat.Sys().(*syscall.Stat_t).Ino
+
+		if fd != newFd {
+			// File has rotated
+			fmt.Println("Log file has rotated")
+			return
+		}
+
 		reader := bufio.NewScanner(file)
 		for reader.Scan() {
 			line := reader.Text()
 			if len(line) < 2 {
 				continue
 			}
-			out.WriteString(processLogLine(line) + "\n")
+			_, err = out.WriteString(processLogLine(line) + "\n")
+			if err != nil {
+				fmt.Println("Failed to write line to output file:", err)
+			}
 		}
 
 		if reader.Err() != nil {
