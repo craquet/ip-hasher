@@ -2,5 +2,5 @@ services:
   ip-hasher:
     build: .
     volumes:
-      - ./access.log:/app/access.log:ro
-      - ./access_hashed.log:/app/access_hashed.log
+      - ./access.log:/app/logs/access.log:ro
+      - ./access_hashed.log:/app/out/access_hashed.log

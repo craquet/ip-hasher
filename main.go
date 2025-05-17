@@ -60,7 +60,7 @@ func pollFile(logFile, outFile string, interval time.Duration) {
 
 		newStat, err := os.Stat(logFile)
 		if err != nil {
-			fmt.Println("Failed to stat log file:", err)
+			fmt.Println("Failed to stat log file:", err, ". Assuming log rotation, restarting...")
 			return
 		}
 		newFd := newStat.Sys().(*syscall.Stat_t).Ino
@@ -106,6 +106,7 @@ func pollFile(logFile, outFile string, interval time.Duration) {
 
 func main() {
 	for {
-		pollFile("access.log", "access_hashed.log", time.Second)
+		pollFile("logs/access.log", "out/access_hashed.log", time.Second)
+		time.Sleep(time.Second)
 	}
 }
