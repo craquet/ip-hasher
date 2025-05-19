@@ -1,0 +1,19 @@
+services:
+  ip-hasher1:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - /var/log/apache2:/app/logs:ro
+      - ./:/app/out
+    environment:
+      FILENAME_IN: "access.log"
+      FILENAME_OUT: "access_hashed.log"
+  ip-hasher2:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - /var/log/apache2:/app/logs:ro
+      - ./:/app/out
+    environment:
+      FILENAME_IN: "other_vhosts_access.log"
+      FILENAME_OUT: "other_vhosts_access_hashed.log"

@@ -106,7 +106,7 @@ func pollFile(logFile, outFile string, interval time.Duration) {
 
 func main() {
 	for {
-		pollFile("logs/access.log", "out/access_hashed.log", time.Second)
+		pollFile(os.ExpandEnv("logs/$FILENAME_IN"), os.ExpandEnv("out/$FILENAME_OUT"), time.Second)
 		time.Sleep(time.Second)
 	}
 }

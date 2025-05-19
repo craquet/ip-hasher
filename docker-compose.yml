@@ -2,5 +2,8 @@ services:
   ip-hasher:
     build: .
     volumes:
-      - ./access.log:/app/logs/access.log:ro
+      - /var/log:/app/logs:ro
       - ./access_hashed.log:/app/out/access_hashed.log
+    environment:
+      FILENAME_IN: "access.log"
+      FILENAME_OUT: "access_hashed.log"
