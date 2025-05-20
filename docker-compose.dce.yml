@@ -17,3 +17,12 @@ services:
     environment:
       FILENAME_IN: "other_vhosts_access.log"
       FILENAME_OUT: "other_vhosts_access_hashed.log"
+  ip-hasher3:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - /var/log/apache2:/app/logs:ro
+      - ./:/app/out
+    environment:
+      FILENAME_IN: "error.log"
+      FILENAME_OUT: "error.log"
